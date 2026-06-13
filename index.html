@@ -155,6 +155,33 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 .pg-btn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
 .pg-btn:disabled{opacity:.4;cursor:not-allowed}
 
+/* LOGIN SCREEN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--navy3);padding:20px}
+.login-card{background:var(--surface);border-radius:16px;padding:36px 32px;width:100%;max-width:380px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.login-logo{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:24px}
+.login-logo svg{width:56px;height:56px;margin-bottom:12px}
+.login-logo h1{font-size:18px;font-weight:700;color:var(--text)}
+.login-logo p{font-size:12px;color:var(--text3);margin-top:2px}
+.login-field{margin-bottom:14px}
+.login-field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.login-field input{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'IBM Plex Sans',sans-serif;color:var(--text);outline:none;transition:border-color .15s}
+.login-field input:focus{border-color:var(--navy)}
+.login-btn{width:100%;padding:12px;border-radius:8px;font-size:14px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;cursor:pointer;border:none;background:var(--navy);color:#fff;margin-top:6px;transition:background .15s}
+.login-btn:hover{background:var(--navy2)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed}
+.login-error{background:#fdecea;color:#b03020;border:1px solid #f5c6c0;border-radius:8px;padding:10px 12px;font-size:12px;margin-bottom:14px;display:none}
+.login-error.show{display:block}
+
+/* INSPECTORS VIEW */
+.inspector-form{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border);align-items:end}
+.inspector-form .field{display:flex;flex-direction:column;gap:5px}
+.inspector-form label{font-size:11px;font-weight:600;color:var(--text2)}
+.inspector-form input,.inspector-form select{padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:'IBM Plex Sans',sans-serif;color:var(--text);outline:none}
+.inspector-form input:focus,.inspector-form select:focus{border-color:var(--navy)}
+.inspector-form button{padding:10px 18px;border-radius:8px;font-size:13px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;cursor:pointer;border:none;background:var(--navy);color:#fff;white-space:nowrap}
+.inspector-form button:hover{background:var(--navy2)}
+@media(max-width:760px){.inspector-form{grid-template-columns:1fr}}
+
 /* RESPONSIVE */
 @media(max-width:900px){.stats-grid{grid-template-columns:1fr 1fr}.analytics-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.sidebar{display:none}.main{margin-left:0}.stats-grid{grid-template-columns:1fr}}
@@ -162,7 +189,38 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 </head>
 <body>
 
-<div class="layout">
+<!-- LOGIN SCREEN -->
+<div class="login-wrap" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+        <rect width="32" height="32" rx="7" fill="#253660"/>
+        <path d="M16 3L27 7.5L27 17C27 22 22 26.5 16 28.5C10 26.5 5 22 5 17L5 7.5Z" fill="#2e4a7a" stroke="rgba(255,255,255,.1)" stroke-width=".5"/>
+        <rect x="9" y="16" width="14" height="8" rx="1" fill="white" opacity=".9"/>
+        <rect x="10.5" y="12.5" width="2.5" height="4" rx=".5" fill="white" opacity=".9"/>
+        <rect x="14.8" y="12.5" width="2.5" height="4" rx=".5" fill="white" opacity=".9"/>
+        <rect x="19" y="12.5" width="2.5" height="4" rx=".5" fill="white" opacity=".9"/>
+        <path d="M9 19.5Q16 24.5 23 19.5" stroke="#b8d4f8" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <circle cx="16" cy="21" r="1.5" fill="#b8d4f8"/>
+      </svg>
+      <h1>MOIC Inspector Portal</h1>
+      <p>Admin sign in</p>
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="admin@mic.gov.zw" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<div class="layout" id="appLayout" style="display:none">
+
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
@@ -200,6 +258,10 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
         <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         Analytics
       </a>
+      <a class="sb-item" id="nav-inspectors" onclick="showView('inspectors')">
+        <svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Inspectors
+      </a>
       <div class="sb-section" style="margin-top:8px">System</div>
       <a class="sb-item" onclick="loadData();showToast('Refreshing data…')">
         <svg viewBox="0 0 24 24"><path d="M4 12v1a8 8 0 0 0 13.93 5.33M20 12v-1a8 8 0 0 0-13.93-5.33"/><polyline points="20 4 20 9 15 9"/><polyline points="4 20 4 15 9 15"/></svg>
@@ -209,18 +271,23 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Export CSV
       </a>
+      <a class="sb-item" onclick="doLogout()">
+        <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </a>
     </nav>
 
     <div class="sb-footer">
       <div class="sb-user">
         <div class="sb-avatar">AD</div>
         <div class="sb-user-info">
-          <div class="sb-user-name">Admin</div>
+          <div class="sb-user-name" id="sbUserEmail">Admin</div>
           <div class="sb-user-role">MIC Administrator</div>
         </div>
       </div>
     </div>
   </aside>
+
 
   <!-- MAIN -->
   <div class="main">
@@ -369,8 +436,57 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
         </div>
       </div>
 
+      <!-- ══ INSPECTORS VIEW ══ -->
+      <div class="view" id="view-inspectors">
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Create Inspector Account</h3>
+              <p>Add a new field officer who can log into the tablet app</p>
+            </div>
+          </div>
+          <div class="inspector-form">
+            <div class="field">
+              <label>Full Name</label>
+              <input type="text" id="inspName" placeholder="e.g. John Moyo">
+            </div>
+            <div class="field">
+              <label>Email</label>
+              <input type="email" id="inspEmail" placeholder="john.moyo@mic.gov.zw">
+            </div>
+            <div class="field">
+              <label>Province</label>
+              <select id="inspRegion">
+                <option value="">Select…</option>
+                <option>Harare</option><option>Bulawayo</option><option>Manicaland</option>
+                <option>Mashonaland Central</option><option>Mashonaland East</option>
+                <option>Mashonaland West</option><option>Masvingo</option>
+                <option>Matabeleland North</option><option>Matabeleland South</option><option>Midlands</option>
+              </select>
+            </div>
+            <button onclick="createInspector()">Create Account</button>
+          </div>
+          <div style="padding:0 20px 16px;font-size:12px;color:var(--text3)">
+            A temporary password will be generated and shown once — share it with the inspector securely. They can use it to log into the tablet app.
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Field Inspectors</h3>
+              <p>All registered inspector accounts</p>
+            </div>
+          </div>
+          <div id="inspectorsTable">
+            <div class="loading"><div class="spinner"></div><p>Loading inspectors…</p></div>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
+
 </div><!-- /layout -->
 
 <!-- DETAIL PANEL -->
@@ -396,12 +512,156 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 const SB_URL = 'https://lpcjasjppzsutmcelrws.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxwY2phc2pwcHpzdXRtY2VscndzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwNjE1MDEsImV4cCI6MjA5NjYzNzUwMX0.jsji3FrNT5cgt0NOVTTOre-lhh8T4lH-6kIPtJ10_7I';
 
+// ══════════════════════════════════
+//  AUTH
+// ══════════════════════════════════
+let session = null;
+
+function getStoredSession() {
+  try { return JSON.parse(localStorage.getItem('mic_portal_session')); } catch { return null; }
+}
+function storeSession(s) { localStorage.setItem('mic_portal_session', JSON.stringify(s)); }
+function clearSession() { localStorage.removeItem('mic_portal_session'); }
+
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errBox = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  errBox.classList.remove('show');
+  if (!email || !password) { errBox.textContent = 'Enter email and password'; errBox.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const res = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error_description || data.msg || 'Invalid credentials');
+    session = data;
+    storeSession(data);
+    document.getElementById('sbUserEmail').textContent = email;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appLayout').style.display = 'flex';
+    loadData();
+    loadInspectors();
+  } catch (e) {
+    errBox.textContent = e.message;
+    errBox.classList.add('show');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
+
+function doLogout() {
+  clearSession(); session = null;
+  document.getElementById('appLayout').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+}
+
+function checkAuth() {
+  const s = getStoredSession();
+  if (s && s.access_token) {
+    session = s;
+    document.getElementById('sbUserEmail').textContent = s.user?.email || 'Admin';
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appLayout').style.display = 'flex';
+    return true;
+  }
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('appLayout').style.display = 'none';
+  return false;
+}
+
+document.getElementById('loginPassword')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('loginEmail')?.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ══════════════════════════════════
+//  INSPECTOR MANAGEMENT
+// ══════════════════════════════════
+function genPassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let p = '';
+  for (let i = 0; i < 10; i++) p += chars[Math.floor(Math.random() * chars.length)];
+  return p;
+}
+
+async function createInspector() {
+  const name = document.getElementById('inspName').value.trim();
+  const email = document.getElementById('inspEmail').value.trim();
+  const region = document.getElementById('inspRegion').value;
+  if (!name || !email) { showToast('⚠ Enter name and email'); return; }
+  const password = genPassword();
+  try {
+    // Create auth user via admin endpoint (requires service role normally,
+    // but Supabase allows signup with anon key which auto-confirms if configured)
+    const res = await fetch(`${SB_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SB_KEY },
+      body: JSON.stringify({ email, password, data: { full_name: name, region } })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error_description || data.msg || 'Could not create account');
+
+    // Save profile
+    const userId = data.user?.id || data.id;
+    if (userId) {
+      await fetch(`${SB_URL}/rest/v1/inspector_profiles`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json', 'apikey': SB_KEY,
+          'Authorization': `Bearer ${session.access_token}`, 'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ id: userId, full_name: name, region })
+      });
+    }
+
+    document.getElementById('inspName').value = '';
+    document.getElementById('inspEmail').value = '';
+    document.getElementById('inspRegion').value = '';
+    showToast('✓ Inspector created');
+    showCredentialsModal(email, password, name);
+    loadInspectors();
+  } catch (e) {
+    showToast('⚠ ' + e.message);
+  }
+}
+
+function showCredentialsModal(email, password, name) {
+  alert(`Inspector account created for ${name}\n\nEmail: ${email}\nTemporary Password: ${password}\n\nPlease share these details securely with the inspector. They will use them to log into the tablet app.`);
+}
+
+async function loadInspectors() {
+  try {
+    const profiles = await sbFetch('inspector_profiles?select=*&order=created_at.desc');
+    const el = document.getElementById('inspectorsTable');
+    if (!profiles.length) {
+      el.innerHTML = emptyState('No inspectors yet', 'Create the first inspector account using the form above.');
+      return;
+    }
+    el.innerHTML = `<table class="data-table">
+      <thead><tr><th>Name</th><th>Province</th><th>Created</th></tr></thead>
+      <tbody>${profiles.map(p => `<tr style="cursor:default">
+        <td><div class="company-cell">${p.full_name || '—'}</div></td>
+        <td>${p.region || '—'}</td>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px">${p.created_at ? new Date(p.created_at).toLocaleDateString('en-GB') : '—'}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch (e) {
+    document.getElementById('inspectorsTable').innerHTML = emptyState('Could not load', e.message);
+  }
+}
+
 async function sbFetch(endpoint, opts = {}) {
+  const token = session?.access_token || SB_KEY;
   const res = await fetch(`${SB_URL}/rest/v1/${endpoint}`, {
     ...opts,
     headers: {
       'apikey': SB_KEY,
-      'Authorization': `Bearer ${SB_KEY}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       ...(opts.headers || {})
     }
@@ -714,7 +974,7 @@ function exportCSV() {
 // ══════════════════════════════════
 //  NAVIGATION
 // ══════════════════════════════════
-const pageTitles = { dashboard: 'Operational Overview', visits: 'Company Records Directory', analytics: 'Analytics & Reports' };
+const pageTitles = { dashboard: 'Operational Overview', visits: 'Company Records Directory', analytics: 'Analytics & Reports', inspectors: 'Field Inspectors' };
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
@@ -739,8 +999,11 @@ function showToast(m) { const t = document.getElementById('toast'); t.textConten
 // ══════════════════════════════════
 //  INIT
 // ══════════════════════════════════
-loadData();
-setInterval(loadData, 60000); // auto-refresh every 60s
+if (checkAuth()) {
+  loadData();
+  loadInspectors();
+}
+setInterval(() => { if (session) loadData(); }, 60000); // auto-refresh every 60s
 </script>
 </body>
 </html>
