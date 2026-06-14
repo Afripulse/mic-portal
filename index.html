@@ -666,7 +666,8 @@ async function sbFetch(endpoint, opts = {}) {
       ...(opts.headers || {})
     }
   });
-  if (!res.ok) throw new Error(`Supabase error: ${res.status}`);
+  if (res.status === 401) { doLogout(); throw new Error('Session expired — please sign in again'); }
+  if (!res.ok) { const t = await res.text(); throw new Error(`${res.status}: ${t}`); }
   return res.json();
 }
 
@@ -682,6 +683,7 @@ const PAGE_SIZE = 15;
 //  LOAD DATA
 // ══════════════════════════════════
 async function loadData() {
+  if (!session) return;
   try {
     document.getElementById('connDot').className = 'conn-dot on';
     document.getElementById('connTxt').textContent = 'Loading…';
@@ -695,8 +697,8 @@ async function loadData() {
     document.getElementById('connTxt').textContent = 'Live — ' + allVisits.length + ' records';
   } catch (e) {
     document.getElementById('connDot').className = 'conn-dot off';
-    document.getElementById('connTxt').textContent = 'Connection error';
-    showToast('⚠ Could not connect to database');
+    document.getElementById('connTxt').textContent = 'Error: ' + e.message;
+    showToast('⚠ ' + e.message);
     renderEmpty();
   }
 }
