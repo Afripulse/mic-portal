@@ -495,7 +495,13 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
     <div class="dp-head">
       <div class="dp-head-row">
         <div class="dp-company" id="dpCompany">—</div>
-        <button class="dp-close" onclick="closeDetailPanel()">✕</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button onclick="exportPDF()" style="background:var(--accent);border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;font-family:'IBM Plex Sans',sans-serif;cursor:pointer;color:#1a2540;display:flex;align-items:center;gap:5px">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            PDF
+          </button>
+          <button class="dp-close" onclick="closeDetailPanel()">✕</button>
+        </div>
       </div>
       <div class="dp-sub" id="dpSub">—</div>
     </div>
@@ -804,6 +810,7 @@ function visitRow(v) {
 function openDetail(id) {
   const v = allVisits.find(x => x.id === id);
   if (!v) return;
+  currentVisitData = v;
   const d = v.data || {};
   document.getElementById('dpCompany').textContent = v.company_name || 'Unknown Company';
   document.getElementById('dpSub').textContent = `${v.sector || '—'} · ${v.officer_region || '—'} · Synced ${v.synced_at ? new Date(v.synced_at).toLocaleDateString('en-GB') : '—'}`;
@@ -971,6 +978,325 @@ function exportCSV() {
   a.download = 'MIC_Company_Visits_' + new Date().toISOString().split('T')[0] + '.csv';
   a.click();
   showToast('CSV exported ✓');
+}
+
+// ══════════════════════════════════
+//  EXPORT PDF
+// ══════════════════════════════════
+let currentVisitData = null;
+
+function exportPDF() {
+  if (!currentVisitData) return;
+  const v = currentVisitData;
+  const d = v.data || {};
+  const date = v.visit_date ? new Date(v.visit_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+  const now = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const sec = (num, title, content) => `
+    <div class="pdf-section">
+      <div class="pdf-sec-head">
+        <span class="pdf-sec-num">${num}</span>
+        <span class="pdf-sec-title">${title}</span>
+      </div>
+      <div class="pdf-sec-body">${content}</div>
+    </div>`;
+
+  const row = (label, val) => val ? `<tr><td class="pdf-label">${label}</td><td class="pdf-val">${val}</td></tr>` : '';
+
+  const tableRow = (label, y1, y2, y3) => `<tr><td>${label}</td><td>${y1||'—'}</td><td>${y2||'—'}</td><td>${y3||'—'}</td></tr>`;
+
+  const challenges = (items) => items.filter(Boolean).join(', ') || '—';
+
+  const yr = new Date().getFullYear();
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Company Visit Report — ${v.company_name || 'Unknown'}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Arial', sans-serif; font-size: 11px; color: #1a1a2e; background: #fff; }
+  .page { max-width: 800px; margin: 0 auto; padding: 0; }
+
+  /* COVER */
+  .cover { background: #1e2d4e; color: white; padding: 40px 48px; min-height: 220px; position: relative; }
+  .cover-top { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; border-bottom: 2px solid rgba(255,255,255,.15); padding-bottom: 20px; }
+  .cover-logo { width: 52px; height: 52px; background: #e8a020; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; color: #1e2d4e; flex-shrink: 0; }
+  .cover-ministry { font-size: 13px; font-weight: 700; line-height: 1.4; }
+  .cover-ministry span { display: block; font-size: 11px; color: rgba(255,255,255,.6); font-weight: 400; margin-top: 2px; }
+  .cover h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .cover h2 { font-size: 14px; color: rgba(255,255,255,.7); font-weight: 400; margin-bottom: 16px; }
+  .cover-meta { display: flex; gap: 32px; font-size: 11px; color: rgba(255,255,255,.6); }
+  .cover-meta strong { color: white; display: block; font-size: 12px; }
+  .gold-bar { height: 5px; background: #e8a020; }
+
+  /* BODY */
+  .body { padding: 28px 48px; }
+
+  /* SECTION */
+  .pdf-section { margin-bottom: 22px; break-inside: avoid; }
+  .pdf-sec-head { background: #1e2d4e; color: white; padding: 8px 14px; display: flex; align-items: center; gap: 10px; border-radius: 4px 4px 0 0; }
+  .pdf-sec-num { background: #e8a020; color: #1e2d4e; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+  .pdf-sec-title { font-size: 12px; font-weight: 700; letter-spacing: .3px; }
+  .pdf-sec-body { border: 1px solid #dde2ec; border-top: none; border-radius: 0 0 4px 4px; overflow: hidden; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; }
+  .pdf-label { width: 36%; padding: 7px 12px; font-weight: 600; color: #4a5a78; background: #f8f9fc; border-bottom: 1px solid #eef1f8; font-size: 10.5px; vertical-align: top; }
+  .pdf-val { padding: 7px 12px; color: #1a1a2e; border-bottom: 1px solid #eef1f8; font-size: 10.5px; vertical-align: top; line-height: 1.5; }
+  tr:last-child td { border-bottom: none; }
+
+  /* DATA TABLE */
+  .data-tbl { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  .data-tbl th { background: #f0f2f7; padding: 6px 10px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #8a9ab8; border-bottom: 1px solid #dde2ec; }
+  .data-tbl td { padding: 6px 10px; border-bottom: 1px solid #eef1f8; color: #1a1a2e; }
+  .data-tbl tr:last-child td { border-bottom: none; }
+
+  /* FOOTER */
+  .pdf-footer { margin-top: 32px; padding: 16px 0; border-top: 2px solid #1e2d4e; display: flex; justify-content: space-between; align-items: center; }
+  .pdf-footer-left { font-size: 10px; color: #8a9ab8; line-height: 1.6; }
+  .pdf-footer-right { font-size: 10px; color: #8a9ab8; text-align: right; }
+
+  /* SIGNATURE */
+  .sig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; padding: 16px 12px; }
+  .sig-box { border-top: 1.5px solid #1e2d4e; padding-top: 6px; }
+  .sig-label { font-size: 10px; color: #4a5a78; font-weight: 600; }
+  .sig-name { font-size: 11px; color: #1a1a2e; font-weight: 700; margin-top: 2px; }
+  .sig-role { font-size: 10px; color: #8a9ab8; }
+  .sig-space { height: 36px; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pdf-section { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-top">
+      <div class="cover-logo">MIC</div>
+      <div class="cover-ministry">
+        Ministry of Industry and Commerce
+        <span>Republic of Zimbabwe — Field Inspection Programme</span>
+      </div>
+    </div>
+    <h1>${v.company_name || 'Company Visit Report'}</h1>
+    <h2>Industrial Company Visit Report — ${v.sector || 'General'}</h2>
+    <div class="cover-meta">
+      <div><strong>Date of Visit</strong>${date}</div>
+      <div><strong>Province</strong>${v.officer_region || '—'}</div>
+      <div><strong>Inspecting Officer</strong>${v.officer_name || '—'}</div>
+      <div><strong>Report Generated</strong>${now}</div>
+    </div>
+  </div>
+  <div class="gold-bar"></div>
+
+  <div class="body">
+
+    ${sec('1.0', 'Company Background', `<table>
+      ${row('Company Name', v.company_name)}
+      ${row('Year Established', d.yearEst)}
+      ${row('Line of Business', v.sector)}
+      ${row('Shareholding Structure', d['rg_share'])}
+      ${row('Organisational Structure', d.orgStructure)}
+      ${row('Physical Address', d.location || v.location)}
+      ${row('Contact Person', d.contactPerson)}
+      ${row('Phone', d.phone)}
+      ${row('Email', d.email)}
+      ${row('Company Significance', d.significance)}
+      ${row('Nature of Value Addition', d.valueAddition)}
+    </table>`)}
+
+    ${sec('2.0', 'Investment Levels', `<table>
+      ${row('Total Capital Invested (USD)', d.totalCapital ? '$' + Number(d.totalCapital).toLocaleString() : null)}
+      ${row('Current Stock Value (USD)', d.stockValue ? '$' + Number(d.stockValue).toLocaleString() : null)}
+      ${row('Recent Investment Value (USD)', d.recentInvVal ? '$' + Number(d.recentInvVal).toLocaleString() : null)}
+      ${row('Year of Investment', d.invYear)}
+      ${row('Recent / New Investments', d.recentInvestments)}
+      ${row('Funding Sources', [d.fundEquity&&'Own Equity',d.fundBank&&'Bank Loan',d.fundFDI&&'FDI',d.fundGovt&&'Government Grant',d.fundOther&&'Other'].filter(Boolean).join(', '))}
+    </table>`)}
+
+    ${sec('3.0', 'Employment Levels', `
+    <table class="data-tbl">
+      <thead><tr><th>Category</th><th>${yr-2}</th><th>${yr-1}</th><th>${yr} (Current)</th></tr></thead>
+      <tbody>
+        ${tableRow('Total Employees', d.empT_0, d.empT_1, d.empT_2)}
+        ${tableRow('Male', d.empM_0, d.empM_1, d.empM_2)}
+        ${tableRow('Female', d.empF_0, d.empF_1, d.empF_2)}
+        ${tableRow('Permanent', d.empPerm_0, d.empPerm_1, d.empPerm_2)}
+        ${tableRow('Contract', d.empCon_0, d.empCon_1, d.empCon_2)}
+        ${tableRow('Management (M)', d.empMgM_0, d.empMgM_1, d.empMgM_2)}
+        ${tableRow('Management (F)', d.empMgF_0, d.empMgF_1, d.empMgF_2)}
+        ${tableRow('Youth (<35)', d.empYth_0, d.empYth_1, d.empYth_2)}
+        ${tableRow('PWD', d.empPwd_0, d.empPwd_1, d.empPwd_2)}
+      </tbody>
+    </table>
+    ${d.empRemarks ? `<table><tr><td class="pdf-label">Remarks</td><td class="pdf-val">${d.empRemarks}</td></tr></table>` : ''}`)}
+
+    ${sec('4.0', 'Production & Capacity Utilisation', `<table>
+      ${row('Installed Capacity', d.instCap)}
+      ${row('Current Utilisation (%)', d.capUtil ? d.capUtil + '%' : null)}
+      ${row('Key Products', d.keyProducts)}
+    </table>
+    <table class="data-tbl" style="margin-top:1px">
+      <thead><tr><th>Period</th><th>Year 1</th><th>Year 2</th><th>Year 3</th></tr></thead>
+      <tbody>
+        ${tableRow('Daily Output', d.pD_0, d.pD_1, d.pD_2)}
+        ${tableRow('Monthly Output', d.pM_0, d.pM_1, d.pM_2)}
+        ${tableRow('Annual Output', d.pA_0, d.pA_1, d.pA_2)}
+        ${tableRow('Utilisation (%)', d.pU_0, d.pU_1, d.pU_2)}
+      </tbody>
+    </table>
+    ${d.prodRemarks ? `<table><tr><td class="pdf-label">Remarks</td><td class="pdf-val">${d.prodRemarks}</td></tr></table>` : ''}`)}
+
+    ${sec('5.0', 'State of Machinery / Equipment', `<table>
+      ${row('Average Machine Age (yrs)', d.machAge)}
+      ${row('Overall Condition', d.machCond)}
+      ${row('Source of Machinery', [d.machLocal&&'Locally Manufactured',d.machImportNew&&'Imported New',d.machImportUsed&&'Imported Second-hand'].filter(Boolean).join(', '))}
+      ${row('Country of Origin', d.machOrigin)}
+      ${row('ISO Certification', d['rg_iso'])}
+      ${row('ISO Standard', d.isoDetails)}
+      ${row('Technology Nature', d.techNature)}
+      ${row('Planned Upgrades', d.machUpgrades)}
+    </table>`)}
+
+    ${sec('6.0', 'Industry 4.0', `<table>
+      ${row('Technologies Adopted/Planned', [d.i4AI&&'AI',d.i4Rob&&'Robotics',d.i4Cloud&&'Cloud',d.i4Print&&'3D Printing',d.i4IoT&&'IoT',d.i4Data&&'Big Data',d.i4Block&&'Blockchain',d.i4ERP&&'ERP'].filter(Boolean).join(', '))}
+      ${row('Readiness Level', d.i4Ready)}
+      ${row('Adoption Plans', d.i4Plans)}
+      ${row('Budget for Industry 4.0 (USD)', d.i4Budget ? '$' + Number(d.i4Budget).toLocaleString() : null)}
+    </table>`)}
+
+    ${sec('7.0', 'Market Share & Turnover', `<table>
+      ${row('Market Share (%)', d.mktShare ? d.mktShare + '%' : null)}
+      ${row('Annual Turnover (USD)', d.turnover ? '$' + Number(d.turnover).toLocaleString() : null)}
+      ${row('Market Reach', [d.mktLocal&&'Local',d.mktSADC&&'SADC/COMESA',d.mktAfrica&&'Africa',d.mktIntl&&'International'].filter(Boolean).join(', '))}
+      ${row('Local Revenue (%)', d.revLocal ? d.revLocal + '%' : null)}
+      ${row('Export Revenue (%)', d.revExport ? d.revExport + '%' : null)}
+      ${row('Export Destinations', d.exportDest)}
+      ${row('Main Competitors', d.competitors)}
+      ${row('Key Clients / Customers', d.clients)}
+      ${row('Marketing Strategy', d.mktStrategy)}
+      ${row('Product Specifications', d.productSpec)}
+      ${row('Number of Branches', d.branches)}
+    </table>`)}
+
+    ${sec('8.0', 'Raw Materials', `<table>
+      ${row('Primary Raw Materials', d.rawMats)}
+      ${row('Sourcing', [d.rmLocal&&'Local (Zimbabwe)',d.rmRegional&&'Regional (SADC)',d.rmImported&&'Imported'].filter(Boolean).join(', '))}
+      ${row('% Local Materials', d.rmLocalPct ? d.rmLocalPct + '%' : null)}
+      ${row('% Imported Materials', d.rmImportPct ? d.rmImportPct + '%' : null)}
+      ${row('Key Suppliers', d.suppliers)}
+      ${row('Raw Material Challenges', d.rmChallenges)}
+    </table>`)}
+
+    ${sec('9.0', 'Research & Development Initiatives', `<table>
+      ${row('Dedicated R&D Function', d['rg_rd'])}
+      ${row('R&D Initiatives Undertaken', d.rdInit)}
+      ${row('R&D Budget (% of Revenue)', d.rdBudget ? d.rdBudget + '%' : null)}
+      ${row('Collaborations / Partnerships', d.rdCollab)}
+      ${row('Intellectual Property', d.rdIP)}
+    </table>`)}
+
+    ${sec('10.0', 'Skills & Employment Requirements', `<table>
+      ${row('Critical Skills Needed', d.skillsNeeded)}
+      ${row('Skills Availability', [d.skAvail&&'Available in Zimbabwe',d.skShort&&'Shortages exist',d.skBrain&&'Brain drain challenge',d.skImport&&'Must import personnel'].filter(Boolean).join(', '))}
+      ${row('Training Programs', d.training)}
+      ${row('Skills Gap Description', d.skillsGap)}
+      ${row('Institution Engagement', d.instEngage)}
+    </table>`)}
+
+    ${sec('11.0', 'Challenges', `<table>
+      ${row('Internal Challenges', challenges([d.ciCapital&&'Working Capital',d.ciMach&&'Obsolete Machinery',d.ciSkills&&'Skills Shortage',d.ciMgmt&&'Management Capacity',d.ciProd&&'Low Productivity']))}
+      ${row('External Challenges', challenges([d.ceForex&&'Foreign Currency',d.cePower&&'Power Supply',d.ceRaw&&'Raw Materials',d.ceImport&&'Import Competition',d.ceReg&&'Regulatory Constraints',d.ceInfra&&'Infrastructure',d.ceTax&&'Taxation',d.ceMkt&&'Market Access']))}
+      ${row('Detailed Description', d.chalDetail)}
+      ${row('Proposed Government Interventions', d.chalIntervention)}
+    </table>`)}
+
+    ${sec('12.0', 'Future Plans', `<table>
+      ${row('Expansion Plans', d['rg_expand'])}
+      ${row('Expansion Description', d.expDesc)}
+      ${row('Planned Future Investments', d.futureInv)}
+      ${row('Estimated Investment (USD)', d.futureInvVal ? '$' + Number(d.futureInvVal).toLocaleString() : null)}
+      ${row('Projected Jobs to Create', d.futureJobs)}
+      ${row('Support Required', d.expSupport)}
+    </table>`)}
+
+    ${sec('13.0', 'Any Other Relevant Information', `<table>
+      ${row('Environmental & Sustainability', d.enviro)}
+      ${row('Corporate Social Responsibility', d.csr)}
+      ${row('Awards / Recognition', d.awards)}
+      ${row('Government / MIC Support Received', d.govtSupport)}
+      ${row('Other Information', d.otherInfo)}
+    </table>`)}
+
+    ${sec('14.0', 'Recommendations', `<table>
+      ${row("Company's Recommendations to Government", d.recCompany)}
+      ${row('Proposed Policy Interventions (MIC)', d.recPolicy)}
+      ${row('Sector-Wide Recommendations', d.recSector)}
+    </table>`)}
+
+    <!-- SIGNATURES -->
+    <div class="pdf-section">
+      <div class="pdf-sec-head">
+        <span class="pdf-sec-num">✍</span>
+        <span class="pdf-sec-title">Certification</span>
+      </div>
+      <div class="pdf-sec-body">
+        <div class="sig-row">
+          <div class="sig-box">
+            <div class="sig-space"></div>
+            <div class="sig-label">Inspecting Officer</div>
+            <div class="sig-name">${v.officer_name || '____________________________'}</div>
+            <div class="sig-role">${d.officerDesig || 'MIC Field Inspector'} — ${v.officer_region || ''}</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-space"></div>
+            <div class="sig-label">Company Representative</div>
+            <div class="sig-name">${d.companyRep || '____________________________'}</div>
+            <div class="sig-role">${v.company_name || ''}</div>
+          </div>
+        </div>
+        <table style="margin-top:0">
+          ${row('Date of Visit', date)}
+          ${row('Report Generated', now)}
+          ${row('Reference No.', v.id ? 'MIC-' + v.id.slice(-8).toUpperCase() : '—')}
+        </table>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="pdf-footer">
+      <div class="pdf-footer-left">
+        Ministry of Industry and Commerce — Republic of Zimbabwe<br>
+        Industrial Company Visit Report — Confidential Government Document
+      </div>
+      <div class="pdf-footer-right">
+        Generated: ${now}<br>
+        MIC Field Inspector System v2.0
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>`;
+
+  // Open in new window and trigger print/save as PDF
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  win.onload = () => {
+    setTimeout(() => {
+      win.focus();
+      win.print();
+    }, 500);
+  };
+  showToast('PDF report opened — save as PDF from print dialog');
 }
 
 // ══════════════════════════════════
